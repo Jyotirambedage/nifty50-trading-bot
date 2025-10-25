@@ -36,3 +36,22 @@ jobs:
           git add signal_log.csv || true
           git commit -m "Update signal log [skip ci]" || echo "No changes to commit"
           git push || echo "Push failed - check permissions"
+
+
+def send_telegram_message(message):
+    """Send message to Telegram group or chat."""
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        print("❌ Telegram credentials missing — message not sent.")
+        return
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": message}
+    try:
+        r = requests.post(url, data=payload)
+        print("✅ Telegram response:", r.status_code)
+    except Exception as e:
+        print("❌ Telegram send failed:", e)
+
+
