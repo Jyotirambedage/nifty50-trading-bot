@@ -50,14 +50,22 @@ jobs:
         run: |
           python - <<'PY'
 import os, requests, sys
+
 bot = os.environ.get("TELEGRAM_BOT_TOKEN")
 chat = os.environ.get("TELEGRAM_CHAT_ID")
+
 print("BOT present:", bool(bot))
 print("CHAT present:", bool(chat))
+
 if bot and chat:
     try:
-        r = requests.post(f"https://api.telegram.org/bot{bot}/sendMessage",
-                          json={"chat_id": chat, "text": "DEBUG: test message from GitHub Actions (remove this step after testing)"})
+        r = requests.post(
+            f"https://api.telegram.org/bot{bot}/sendMessage",
+            json={
+                "chat_id": chat,
+                "text": "DEBUG: test message from GitHub Actions (remove this step after testing)"
+            }
+        )
         print("Telegram send status:", r.status_code)
         print("Telegram response:", r.text)
     except Exception as e:
