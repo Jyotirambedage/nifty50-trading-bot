@@ -1,39 +1,99 @@
-name: Nifty50 Combined Signals
+name: Nifty50 Combined Signals (DEBUG)
 
 on:
-  schedule:
-    - cron: "*/15 * * * *"   # every 15 minutes
   workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
 
 jobs:
   run-signals:
     runs-on: ubuntu-latest
-    steps:
-      # Step 1: Checkout repo
-      - uses: actions/checkout@v4
 
-      # Step 2: Setup Python
-      - uses: actions/setup-python@v4
+    steps:
+      # 1) Checkout with credentials so we can push back CSV
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      # 2) Setup Python
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      # Step 3: Install dependencies
+      # 3) Install dependencies
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install yfinance ta pandas requests
 
-      # Step 4: Run Python script
-      - name: Run Python Script
-        run: python nifty50_signals_final.py
+      # 4) Quick environment debug (DOES NOT PRINT SECRETS)
+      - name: Debug env and workspace
+        run: |
+          echo ">>> Python version:"
+          python -V
+          echo ">>> List workspace files:"
+          ls -la
+          echo ">>> Check for existing signal_log.csv (top 10 lines if exists):"
+          if [ -f signal_log.csv ]; then
+            head -n 10 signal_log.csv || true
+          else
+            echo "(no signal_log.csv in repo yet)"
+          fi
+
+      # 5) Send an immediate Telegram test message (diagnose token/chat)
+      - name: Telegram connectivity test
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python - <<'PY'
+import os, requests, json, sys
+bot = os.environ.get("TELEGRAM_BOT_TOKEN")
+chat = os.environ.get("TELEGRAM_CHAT_ID")
+print("BOT present:", bool(bot))
+print("CHAT present:", bool(chat))
+if bot and chat:
+    try:
+        r = requests.post(f"https://api.telegram.org/bot{bot}/sendMessage",
+                          json={"chat_id": chat, "text": "DEBUG: test message from GitHub Actions (remove this step after testing)"})
+        print("Telegram send status:", r.status_code)
+        print("Telegram response:", r.text)
+    except Exception as e:
+        print("Telegram exception:", e)
+else:
+    print("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID. Please add as repo secrets.")
+    sys.exit(2)
+PY
 
-      # Step 5: Commit updated CSV for persistence
+      # 6) Run your main script (unbuffered so logs stream)
+      - name: Run Python script (unbuffered)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          echo ">>> Running nifty50_signals_final.py"
+          python -u nifty50_signals_final.py
+
+      # 7) Show end state of CSV (for debugging)
+      - name: Show CSV tail
+        run: |
+          echo ">>> CSV head/tail (if exists):"
+          if [ -f signal_log.csv ]; then
+            echo "---- head ----"
+            head -n 10 signal_log.csv || true
+            echo "---- tail ----"
+            tail -n 10 signal_log.csv || true
+          else
+            echo "(no signal_log.csv present after run)"
+          fi
+
+      # 8) Commit updated CSV back to repo (if changed)
       - name: Commit Updated CSV
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add signal_log.csv
+          git add signal_log.csv || true
           git commit -m "Update signal log [skip ci]" || echo "No changes to commit"
-          git push
+          git push || echo "Push failed - check permissions"
