@@ -45,10 +45,24 @@ def get_signal(stock):
     if data.empty:
         return None
 
-    data["EMA20"] = ta.trend.EMAIndicator(data["Close"], 20).ema_indicator()
-    data["EMA50"] = ta.trend.EMAIndicator(data["Close"], 50).ema_indicator()
-    data["RSI"] = ta.momentum.RSIIndicator(data["Close"], 14).rsi()
+    # Flatten multi-index columns if present (important fix)
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = [col[0] for col in data.columns]
 
+    # Ensure 'Close' column exists and is clean
+    if "Close" not in data.columns:
+        print(f"{stock}: Missing Close data.")
+        return None
+
+    # Convert Close column to 1D numeric
+    data["Close"] = pd.to_numeric(data["Close"], errors="coerce")
+
+    # Calculate indicators
+    data["EMA20"] = ta.trend.EMAIndicator(close=data["Close"], window=20).ema_indicator()
+    data["EMA50"] = ta.trend.EMAIndicator(close=data["Close"], window=50).ema_indicator()
+    data["RSI"] = ta.momentum.RSIIndicator(close=data["Close"], window=14).rsi()
+
+    # Get latest and previous row
     last = data.iloc[-1]
     prev = data.iloc[-2]
 
