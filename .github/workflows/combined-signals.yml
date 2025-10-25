@@ -1,0 +1,39 @@
+name: Nifty50 Combined Signals
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+  workflow_dispatch:
+
+jobs:
+  run-signals:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout repo
+      - uses: actions/checkout@v4
+
+      # Step 2: Setup Python
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          pip install yfinance ta pandas requests
+
+      # Step 4: Run Python script
+      - name: Run Python Script
+        run: python nifty50_signals_final.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      # Step 5: Commit updated CSV for persistence
+      - name: Commit Updated CSV
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add signal_log.csv
+          git commit -m "Update signal log [skip ci]" || echo "No changes to commit"
+          git push
