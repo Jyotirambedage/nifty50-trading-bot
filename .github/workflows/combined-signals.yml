@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout with credentials so we can push back CSV
+      # 1) Checkout repo with credentials for push
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -28,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install yfinance ta pandas requests
 
-      # 4) Quick environment debug (DOES NOT PRINT SECRETS)
+      # 4) Quick environment debug
       - name: Debug env and workspace
         run: |
           echo ">>> Python version:"
@@ -42,7 +42,7 @@ jobs:
             echo "(no signal_log.csv in repo yet)"
           fi
 
-      # 5) Send an immediate Telegram test message (diagnose token/chat)
+      # 5) Telegram connectivity test
       - name: Telegram connectivity test
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -75,7 +75,7 @@ else:
     sys.exit(2)
 PY
 
-      # 6) Run your main script (unbuffered so logs stream)
+      # 6) Run main script
       - name: Run Python script (unbuffered)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -84,7 +84,7 @@ PY
           echo ">>> Running nifty50_signals_final.py"
           python -u nifty50_signals_final.py
 
-      # 7) Show end state of CSV (for debugging)
+      # 7) Show CSV state
       - name: Show CSV tail
         run: |
           echo ">>> CSV head/tail (if exists):"
@@ -97,7 +97,7 @@ PY
             echo "(no signal_log.csv present after run)"
           fi
 
-      # 8) Commit updated CSV back to repo (if changed)
+      # 8) Commit updated CSV back to repo
       - name: Commit Updated CSV
         run: |
           git config --global user.name "github-actions"
