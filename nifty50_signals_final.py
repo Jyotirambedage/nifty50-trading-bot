@@ -100,3 +100,38 @@ if signals:
     print(message)
 else:
     print("No new signals generated.")
+
+# ====== TELEGRAM MESSAGE SECTION ======
+import os
+import requests
+
+def send_telegram_message(message):
+    """Send message to Telegram group or chat."""
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        print("❌ Telegram credentials missing — message not sent.")
+        return
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": message}
+    try:
+        r = requests.post(url, data=payload)
+        print("✅ Telegram response:", r.status_code)
+    except Exception as e:
+        print("❌ Telegram send failed:", e)
+
+
+# ====== AFTER SIGNAL GENERATION ======
+# Suppose you collect your signal messages in a list named `messages`
+# Example:
+# messages = ["BUY: RELIANCE", "SELL: INFY"]
+
+try:
+    if messages:
+        final_message = "📊 Nifty50 Combined Signals\n\n" + "\n".join(messages)
+        send_telegram_message(final_message)
+    else:
+        send_telegram_message("No valid signals generated at this time.")
+except Exception as e:
+    print("Error while sending Telegram message:", e)
