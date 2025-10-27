@@ -1,3 +1,0 @@
-git add signal_log.csv
-git commit -m "Add initial signal log CSV"
-git push
