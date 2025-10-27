@@ -68,3 +68,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    # 🔔 Send a Telegram confirmation when run manually from GitHub Actions
+    if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch":
+        from datetime import datetime
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        confirmation_message = f"✅ Manual run successful at {now} (Nifty + BankNifty strategy executed)."
+        send_telegram_message(confirmation_message
