@@ -1,40 +1,40 @@
-name: Nifty + BankNifty Combined Signals
+name: Nifty & BankNifty Signal Bot (V2)
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "*/10 * * * 1-5" # every 10 minutes, Monday–Friday
+    # Runs every 10 minutes between 9:15–15:30 IST (Mon–Fri)
+    - cron: '*/10 3-10 * * 1-5'
+  workflow_dispatch:
 
 jobs:
   run-signals:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: 🧰 Checkout repository
         uses: actions/checkout@v4
-        with:
-          persist-credentials: true
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install yfinance ta pandas requests numpy pytz
+          pip install pandas numpy yfinance ta requests pytz
 
-      - name: Run Nifty + BankNifty Signal Script
+      - name: 📁 List repository files (for debug)
+        run: ls -R
+
+      - name: 🚀 Run signal generation script
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python nifty_banknifty_signals.py
-
-      - name: Commit updated CSV log
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git add signal_log.csv || true
-          git commit -m "Update signal log [skip ci]" || echo "No changes to commit"
-          git push || echo "Push failed - check permissions"
+          echo "Running relaxed signal script (V2)..."
+          if [ -f nifty_banknifty_signals_v2.py ]; then
+            python nifty_banknifty_signals_v2.py
+          else
+            echo "❌ Script not found — please check file name or location."
+            exit 1
+          fi
