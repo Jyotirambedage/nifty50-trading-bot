@@ -59,7 +59,7 @@ if not os.path.exists(CSV_FILE):
     df.to_csv(CSV_FILE, index=False)
 
 # =============================
-# STRATEGY & SIGNAL GENERATION
+# STRATEGY & SIGNAL GENERATION (RELAXED)
 # =============================
 def generate_signal(stock):
     try:
@@ -72,15 +72,21 @@ def generate_signal(stock):
         data["RSI"] = ta.momentum.RSIIndicator(data["Close"], window=14).rsi()
 
         latest = data.iloc[-1]
-        prev = data.iloc[-2]
+        prev1 = data.iloc[-2]
+        prev2 = data.iloc[-3]
 
-        # BUY / SELL logic
-        if latest["EMA20"] > latest["EMA50"] and latest["RSI"] > 55 and prev["EMA20"] <= prev["EMA50"]:
+        # Loosened RSI confirmation (52/48 instead of 55/45)
+        # Loosened crossover check (any of last 2 candles can trigger)
+        buy_crossover = (latest["EMA20"] > latest["EMA50"]) and (prev1["EMA20"] <= prev1["EMA50"] or prev2["EMA20"] <= prev2["EMA50"])
+        sell_crossover = (latest["EMA20"] < latest["EMA50"]) and (prev1["EMA20"] >= prev1["EMA50"] or prev2["EMA20"] >= prev2["EMA50"])
+
+        if buy_crossover and latest["RSI"] > 52:
             return ("BUY", latest["Close"])
-        elif latest["EMA20"] < latest["EMA50"] and latest["RSI"] < 45 and prev["EMA20"] >= prev["EMA50"]:
+        elif sell_crossover and latest["RSI"] < 48:
             return ("SELL", latest["Close"])
         else:
             return None
+
     except Exception as e:
         print(f"⚠️ Error fetching {stock}: {e}")
         return None
@@ -90,6 +96,8 @@ def generate_signal(stock):
 # =============================
 def main():
     print("⏳ Running signal analysis...")
+    send_telegram_message("✅ Manual run successful — script executed correctly (V2 relaxed logic).")
+
     if not MARKET_OPEN_NOW:
         print("⏰ Market closed — skipping automatic signal generation.")
         return
