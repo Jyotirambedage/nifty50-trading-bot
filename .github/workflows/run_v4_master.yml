@@ -1,0 +1,50 @@
+name: Run Master Trading Bot (V4)
+
+on:
+  workflow_dispatch:    # manual run only
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy yfinance ta requests pytz
+
+      - name: List repo files (debug)
+        run: ls -la
+
+      - name: Run Master V4 Signal Script
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GROWW_ACCESS_TOKEN: ${{ secrets.GROWW_ACCESS_TOKEN }}
+        run: |
+          echo "Running Master Combined Bot (V4)..."
+          if [ -f nifty_banknifty_signals_v4_master.py ]; then
+            python nifty_banknifty_signals_v4_master.py
+          else
+            echo "❌ Script not found — please check file name or location."
+            ls -la
+            exit 1
+          fi
+
+      - name: Commit updated CSV
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add signal_log.csv || true
+          git commit -m "Update signal log [skip ci]" || echo "No changes to commit"
+          git push || echo "Push failed - check permissions"
