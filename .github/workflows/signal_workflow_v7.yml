@@ -27,10 +27,14 @@ jobs:
           echo "🚀 Running v7 strategy..."
           python nifty_banknifty_signals_v7.py
 
-      - name: Commit signal log
+      - name: Commit signal log (optional)
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add signal_log_v7.csv || true
-          git commit -m "Update signal log v7" || echo "No changes to commit"
-          git push
+          if [ -f signal_log_v7.csv ]; then
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add signal_log_v7.csv || true
+            git commit -m "Update signal log v7" || echo "No changes to commit"
+            git push || echo "⚠️ Push failed (check repo permissions)"
+          else
+            echo "ℹ️ No signal log file found — skipping commit"
+          fi
