@@ -1,0 +1,36 @@
+name: Nifty & BankNifty Signals V7
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/10 3-10 * * 1-5"  # Runs every 10 mins between 8:30–15:30 IST (GitHub UTC+5:30)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install yfinance pandas numpy requests ta
+
+      - name: Run relaxed strategy V7
+        run: |
+          echo "🚀 Running v7 strategy..."
+          python nifty_banknifty_signals_v7.py
+
+      - name: Commit signal log
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add signal_log_v7.csv || true
+          git commit -m "Update signal log v7" || echo "No changes to commit"
+          git push
