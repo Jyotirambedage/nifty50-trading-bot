@@ -1,0 +1,36 @@
+name: Nifty & BankNifty Combined Signals V6
+
+on:
+  workflow_dispatch:    # Manual run
+  schedule:
+    - cron: "*/10 4-10 * * 1-5"    # Every 10 minutes, Mon–Fri (IST 9:30–15:30 → UTC 4–10)
+
+jobs:
+  run-signals:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: ⚙️ Install dependencies
+        run: |
+          pip install yfinance pandas numpy ta requests
+
+      - name: 🚀 Run Intraday + Swing Script (V6)
+        run: |
+          echo "Running combined relaxed Intraday + Swing signal strategy..."
+          if [ -f nifty_signals_v6.py ]; then
+            python nifty_signals_v6.py
+          else
+            echo "❌ Script not found — please check file name or path."
+            exit 1
+          fi
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
