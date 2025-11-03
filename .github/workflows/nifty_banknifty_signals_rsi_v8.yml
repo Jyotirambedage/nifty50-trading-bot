@@ -32,12 +32,14 @@ jobs:
           python nifty_banknifty_signals_rsi_v8.py
 
       - name: Commit signal log (optional)
+        shell: bash
         run: |
           if [ -f signal_log_v8.csv ]; then
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
             git add signal_log_v8.csv || true
             git commit -m "Update RSI v8 signal log" || echo "No changes to commit"
-            git push || echo "⚠️ Push failed — may be permission issue"
+            git push || echo "⚠️ Push failed — check repo permissions"
           else
             echo "ℹ️ No signal log file found — skipping commit"
+          fi
