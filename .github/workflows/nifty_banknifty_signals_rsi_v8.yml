@@ -1,13 +1,17 @@
-name: Nifty RSI Signals v8
+name: Nifty & BankNifty RSI v8 Strategy
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/10 3-10 * * 1-5"  # every 10 mins, 8:30–15:30 IST
+    - cron: "*/10 3-10 * * 1-5"  # Every 10 minutes during 08:30–15:30 IST
 
 jobs:
   run:
     runs-on: ubuntu-latest
+
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
     steps:
       - name: Checkout repo
@@ -22,13 +26,10 @@ jobs:
         run: |
           pip install yfinance pandas numpy requests ta pytz
 
-      - name: Run RSI-only relaxed strategy (v8)
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - name: Run RSI v8 strategy
         run: |
           echo "🚀 Running RSI v8 strategy..."
-          python nifty_banknifty_signals_rsi_v8.py || true
+          python nifty_banknifty_signals_rsi_v8.py
 
       - name: Commit signal log (optional)
         run: |
@@ -36,8 +37,7 @@ jobs:
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
             git add signal_log_v8.csv || true
-            git commit -m "Update RSI signal log" || echo "No changes"
-            git push || echo "⚠️ Push skipped (no token/permission)"
+            git commit -m "Update RSI v8 signal log" || echo "No changes to commit"
+            git push || echo "⚠️ Push failed — may be permission issue"
           else
-            echo "ℹ️ No CSV file found"
-          fi
+            echo "ℹ️ No signal log file found — skipping commit"
