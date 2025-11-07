@@ -5,6 +5,7 @@ import requests
 import datetime as dt
 import pytz
 import os
+import time
 
 # =============================
 # TELEGRAM SETTINGS
@@ -27,7 +28,7 @@ def send_telegram_message(msg):
         print("❌ Telegram send failed:", e)
 
 # =============================
-# STOCK LIST
+# STOCK LISTS (Nifty50 + BankNifty + Sensex)
 # =============================
 NIFTY_50 = [
     "RELIANCE.NS","TCS.NS","INFY.NS","HDFCBANK.NS","ICICIBANK.NS","LT.NS",
@@ -39,11 +40,9 @@ NIFTY_50 = [
     "DIVISLAB.NS","DRREDDY.NS","SUNPHARMA.NS","EICHERMOT.NS","TATAMOTORS.NS",
     "TATASTEEL.NS","CIPLA.NS","APOLLOHOSP.NS","BAJAJFINSV.NS","UPL.NS",
     "ONGC.NS","ASIANPAINT.NS","M&M.NS","SBILIFE.NS","BAJAJ-AUTO.NS","INDUSINDBK.NS",
-    "HINDALCO.NS","ADANIENT.NS","SHRIRAMFIN.NS","BPCL.NS"
+    "HINDALCO.NS","ADANIENT.NS","SHRIRAMFIN.NS"
 ]
-
 BANK_NIFTY = ["HDFCBANK.NS","ICICIBANK.NS","AXISBANK.NS","SBIN.NS","KOTAKBANK.NS","PNB.NS","BANKBARODA.NS"]
-
 SENSEX = [
     "RELIANCE.NS","TCS.NS","INFY.NS","HDFCBANK.NS","ICICIBANK.NS","SBIN.NS","BHARTIARTL.NS",
     "HUL.NS","HCLTECH.NS","ASIANPAINT.NS","BAJFINANCE.NS","ITC.NS","LT.NS","M&M.NS",
@@ -51,27 +50,17 @@ SENSEX = [
     "HDFCLIFE.NS","NTPC.NS","BAJAJFINSV.NS","MARUTI.NS","WIPRO.NS","TECHM.NS","ONGC.NS",
     "CIPLA.NS","INDUSINDBK.NS","ADANIENT.NS"
 ]
-
 ALL_STOCKS = list(set(NIFTY_50 + BANK_NIFTY + SENSEX))
 
 # =============================
-# MARKET TIME CONTROL
-# =============================
-IST = pytz.timezone("Asia/Kolkata")
-now = dt.datetime.now(IST)
-MARKET_OPEN = dt.time(9, 15)
-MARKET_CLOSE = dt.time(15, 30)
-MARKET_HOURS = MARKET_OPEN <= now.time() <= MARKET_CLOSE
-
-# =============================
-# SIGNAL LOG FILE
+# FILE SETUP
 # =============================
 CSV_FILE = "signal_log_v8.csv"
 if not os.path.exists(CSV_FILE):
     pd.DataFrame(columns=["datetime","stock","signal","price","rsi","target","stop_loss"]).to_csv(CSV_FILE, index=False)
 
 # =============================
-# STRATEGY: RSI ONLY
+# RSI STRATEGY FUNCTION
 # =============================
 def get_signal(stock):
     try:
@@ -85,9 +74,9 @@ def get_signal(stock):
         loss = np.where(delta < 0, -delta, 0)
         avg_gain = pd.Series(gain).rolling(14).mean()
         avg_loss = pd.Series(loss).rolling(14).mean()
-
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
+
         last_rsi = float(rsi.iloc[-1])
         price = float(close.iloc[-1])
 
@@ -102,12 +91,16 @@ def get_signal(stock):
         return None
 
 # =============================
-# MAIN FUNCTION
+# MAIN LOOP (continuous inside GitHub job)
 # =============================
-def main():
-    print("🚀 RSI Signal Bot V8 Running...")
-    if not MARKET_HOURS:
-        print("⏰ Market closed — skipping run.")
+def run_signals():
+    IST = pytz.timezone("Asia/Kolkata")
+    now = dt.datetime.now(IST)
+    if now.weekday() >= 5:
+        print("⏰ Weekend — skipping scan.")
+        return
+    if not (dt.time(9, 15) <= now.time() <= dt.time(15, 30)):
+        print("⏰ Market closed — waiting for next session.")
         return
 
     df = pd.read_csv(CSV_FILE)
@@ -130,7 +123,7 @@ def main():
                 f"📆 Time: {dt.datetime.now(IST).strftime('%Y-%m-%d %H:%M')}\n"
                 f"🏆 Win Chance: ~80%"
             )
-            new_signals.append([stock, signal, dt.datetime.now(IST), price, rsi, target, stop_loss])
+            new_signals.append([stock, signal, now, price, rsi, target, stop_loss])
             send_telegram_message(msg)
 
     if new_signals:
@@ -140,6 +133,12 @@ def main():
         print(f"✅ {len(new_signals)} new signals logged.")
     else:
         print("No new RSI signals detected.")
+
+def main():
+    print("🚀 RSI Signal Bot V8 (Continuous Mode)")
+    for _ in range(10):  # Run 10 times (every 30s = 5 minutes total per job)
+        run_signals()
+        time.sleep(30)
 
 if __name__ == "__main__":
     main()
