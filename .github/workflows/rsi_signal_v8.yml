@@ -1,17 +1,17 @@
-name: RSI Strategy V8 (Every 1 Min)
+name: RSI Signal Bot V8
 
 on:
   schedule:
-    - cron: "*/1 3-10 * * 1-5"  # Every 1 min from 8:30–15:30 IST (GitHub UTC)
+    - cron: "*/1 3-9 * * 1-5"  # Runs every 1 min (8:30 AM–3:30 PM IST)
   workflow_dispatch:
 
 jobs:
-  build:
+  run:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -20,24 +20,20 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install yfinance pandas numpy requests
+          pip install yfinance pandas numpy pytz requests
 
-      - name: Run RSI Strategy V8
+      - name: Run RSI bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          echo "🚀 Running RSI strategy V8..."
-          python nifty_rsi_signals_v8.py
+        run: python rsi_signal_bot_v8.py
 
-      - name: Commit signal log
+      - name: Commit updated log
         run: |
           if [ -f signal_log_v8.csv ]; then
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
-            git add signal_log_v8.csv || true
-            git commit -m "Update RSI signal log V8" || echo "No changes to commit"
+            git add signal_log_v8.csv
+            git commit -m "Update signal log v8" || echo "No new data"
             git push || echo "⚠️ Push failed (check permissions)"
-          else
-            echo "ℹ️ No signal log file found — skipping commit"
           fi
