@@ -20,14 +20,14 @@ def send_telegram_message(msg):
     try:
         requests.post(
             f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            data={"chat_id": CHAT_ID, "text": msg}
+            data={"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}
         )
         print("✅ Message sent to Telegram")
     except Exception as e:
         print("❌ Telegram send failed:", e)
 
 # =============================
-# STOCK LIST (NIFTY + BANKNIFTY + SENSEX)
+# STOCK LIST
 # =============================
 NIFTY_50 = [
     "RELIANCE.NS","TCS.NS","INFY.NS","HDFCBANK.NS","ICICIBANK.NS","LT.NS",
@@ -71,21 +71,29 @@ if not os.path.exists(CSV_FILE):
     pd.DataFrame(columns=["datetime","stock","signal","price","rsi","target","stop_loss"]).to_csv(CSV_FILE, index=False)
 
 # =============================
-# STRATEGY: RELAXED RSI ONLY
+# STRATEGY: RSI ONLY
 # =============================
 def get_signal(stock):
     try:
-        data = yf.download(stock, period="5d", interval="15m", progress=False)
+        data = yf.download(stock, period="5d", interval="15m", progress=False, auto_adjust=False)
         if data.empty or len(data) < 20:
             return None
-        data["RSI"] = 100 - (100 / (1 + data["Close"].diff().clip(lower=0).rolling(14).mean() /
-                                    (-data["Close"].diff().clip(upper=0).rolling(14).mean()).abs()))
-        last_rsi = data["RSI"].iloc[-1]
-        price = data["Close"].iloc[-1]
 
-        if last_rsi > 60:   # Relaxed BUY threshold
+        close = data["Close"].astype(float)
+        delta = close.diff()
+        gain = np.where(delta > 0, delta, 0)
+        loss = np.where(delta < 0, -delta, 0)
+        avg_gain = pd.Series(gain).rolling(14).mean()
+        avg_loss = pd.Series(loss).rolling(14).mean()
+
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+        last_rsi = float(rsi.iloc[-1])
+        price = float(close.iloc[-1])
+
+        if last_rsi > 60:
             return ("BUY", price, round(last_rsi, 2))
-        elif last_rsi < 40:  # Relaxed SELL threshold
+        elif last_rsi < 40:
             return ("SELL", price, round(last_rsi, 2))
         else:
             return None
